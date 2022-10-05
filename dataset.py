@@ -22,7 +22,7 @@ class LibriSpeech(torch.utils.data.Dataset):
             url=split,
             download=True,
         )
-        self.dataset = [self.dataset[i] for i in range(100)]
+        # self.dataset = [self.dataset[i] for i in range(100)] #sellect only first 100 sample
 
     def __len__(self):
         return len(self.dataset)
@@ -45,7 +45,7 @@ class LibriSpeechTraining(torch.utils.data.Dataset):
             url=split,
             download=True,
         )
-        self.dataset = [self.dataset[i] for i in range(100)]
+        # self.dataset = [self.dataset[i] for i in range(100)]
         self.sample_rate = sample_rate
         self.tokenizer = tokenizer
 
