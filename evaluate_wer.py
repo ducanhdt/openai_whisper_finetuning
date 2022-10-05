@@ -10,14 +10,11 @@ from model import WhisperModelModule
 
 from dataset import LibriSpeech
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-
 dataset = LibriSpeech("test-clean")
 loader = torch.utils.data.DataLoader(dataset, batch_size=1)
 
 config = Config()
-# checkpoint_path = "/home/ducanh/Desktop/WHISPER/content/artifacts/checkpoint/checkpoint-epoch=0000.ckpt"
+checkpoint_path = "/home/ducanh/Desktop/WHISPER/content/artifacts/checkpoint/checkpoint-epoch=0002.ckpt"
 
 # try:
 module = WhisperModelModule(config)
@@ -25,8 +22,9 @@ try:
     state_dict = torch.load(checkpoint_path)
     state_dict = state_dict['state_dict']
     module.load_state_dict(state_dict)
-    print("load checkpoint successfully")
-except:
+    print(f"load checkpoint successfully from {checkpoint_path}")
+except Exception as e:
+    print(e)
     print(f"load checkpoint failt using origin weigth of {config.model_name} model")
 model = module.model
     

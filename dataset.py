@@ -8,9 +8,6 @@ import torchaudio
 import whisper
 import torchaudio.transforms as at
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-
 class LibriSpeech(torch.utils.data.Dataset):
     """
     A simple class to wrap LibriSpeech and
@@ -19,14 +16,13 @@ class LibriSpeech(torch.utils.data.Dataset):
     of a very small portion of the utterances.
     """
 
-    def __init__(self, split="test-clean", device=DEVICE):
+    def __init__(self, split="test-clean"):
         self.dataset = torchaudio.datasets.LIBRISPEECH(
             root=os.path.expanduser("./data/"),
             url=split,
             download=True,
         )
-        self.device = device
-        self.dataset = [self.dataset[i] for i in range(10)]
+        self.dataset = [self.dataset[i] for i in range(100)]
 
     def __len__(self):
         return len(self.dataset)
