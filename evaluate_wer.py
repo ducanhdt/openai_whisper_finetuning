@@ -5,6 +5,8 @@ import torch
 import whisper
 from tqdm import tqdm
 from whisper.normalizers import EnglishTextNormalizer
+from config import Config
+from model import WhisperModelModule
 
 from dataset import LibriSpeech
 
@@ -14,7 +16,20 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 dataset = LibriSpeech("test-clean")
 loader = torch.utils.data.DataLoader(dataset, batch_size=1)
 
-model = whisper.load_model("tiny")
+config = Config()
+# checkpoint_path = "/home/ducanh/Desktop/WHISPER/content/artifacts/checkpoint/checkpoint-epoch=0000.ckpt"
+
+# try:
+module = WhisperModelModule(config)
+try:
+    state_dict = torch.load(checkpoint_path)
+    state_dict = state_dict['state_dict']
+    module.load_state_dict(state_dict)
+    print("load checkpoint successfully")
+except:
+    print(f"load checkpoint failt using origin weigth of {config.model_name} model")
+model = module.model
+    
 normalizer = EnglishTextNormalizer()
 
 print(

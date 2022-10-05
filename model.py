@@ -14,16 +14,14 @@ class WhisperModelModule(LightningModule):
     def __init__(
         self,
         cfg: Config,
-        model_name="tiny",
-        lang="en",
         train_dataloader=None,
         eval_dataloader=None,
     ) -> None:
         super().__init__()
-        self.options = whisper.DecodingOptions(language=lang, without_timestamps=True)
-        self.model = whisper.load_model(model_name)
+        self.options = whisper.DecodingOptions(language=cfg.lang, without_timestamps=True)
+        self.model = whisper.load_model(cfg.model_name)
         self.tokenizer = whisper.tokenizer.get_tokenizer(
-            True, language=lang, task=self.options.task
+            True, language=cfg.lang, task=self.options.task
         )
 
         # only decoder training
