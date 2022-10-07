@@ -4,7 +4,7 @@ import torch
 import whisper
 from config import Config
 
-from dataset import LibriSpeechTraining, WhisperDataCollatorWhithPadding
+from dataset import LibriSpeechTraining, VivosTraining, WhisperDataCollatorWhithPadding
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
@@ -16,12 +16,18 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 cfg = Config()
 
-woptions = whisper.DecodingOptions(language="en", without_timestamps=True)
-wtokenizer = whisper.tokenizer.get_tokenizer(True, language="en", task=woptions.task)
+if cfg.lang == "en":
+    train_dataset = LibriSpeechTraining("test-clean")
+    valid_dataset = LibriSpeechTraining("test-clean")
+elif cfg.lang == "vi":
+    train_dataset = VivosTraining("train")
+    valid_dataset = VivosTraining("test")
 
-dataset = LibriSpeechTraining("test-clean", wtokenizer)
-loader = torch.utils.data.DataLoader(
-    dataset, batch_size=cfg.batch_size, collate_fn=WhisperDataCollatorWhithPadding()
+train_loader = torch.utils.data.DataLoader(
+    train_dataset, batch_size=cfg.batch_size, collate_fn=WhisperDataCollatorWhithPadding()
+)
+valid_loader = torch.utils.data.DataLoader(
+    valid_dataset, batch_size=cfg.batch_size, collate_fn=WhisperDataCollatorWhithPadding()
 )
 
 
@@ -37,7 +43,7 @@ checkpoint_callback = ModelCheckpoint(
 )
 
 callback_list = [checkpoint_callback, LearningRateMonitor(logging_interval="epoch")]
-model = WhisperModelModule(cfg, loader, loader)
+model = WhisperModelModule(cfg,train_loader,valid_loader)
 
 trainer = Trainer(
     # precision=2,

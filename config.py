@@ -11,6 +11,6 @@ class Config:
     log_output_dir = "content/logs"
     check_output_dir = "content/artifacts"
     train_name = "whisper"
-    train_id = "00001"
+    train_id = "vivos01"
     model_name = "tiny"
-    lang = "en"
+    lang = "vi"

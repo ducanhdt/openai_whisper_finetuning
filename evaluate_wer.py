@@ -8,10 +8,12 @@ from whisper.normalizers import EnglishTextNormalizer
 from config import Config
 from model import WhisperModelModule
 
-from dataset import LibriSpeech
+from dataset import LibriSpeechTraining, WhisperDataCollatorWhithPadding
 
-dataset = LibriSpeech("test-clean")
-loader = torch.utils.data.DataLoader(dataset, batch_size=1)
+dataset = LibriSpeechTraining("test-clean")
+loader = torch.utils.data.DataLoader(
+    dataset, batch_size=1, collate_fn=WhisperDataCollatorWhithPadding()
+)
 
 config = Config()
 checkpoint_path = "/home/ducanh/Desktop/WHISPER/content/artifacts/checkpoint/checkpoint-epoch=0002.ckpt"
@@ -43,7 +45,9 @@ options = whisper.DecodingOptions(language="en", without_timestamps=True, fp16=F
 hypotheses = []
 references = []
 
-for mels, texts in tqdm(loader):
+for sample in tqdm(loader):
+    mels = sample['input_ids']
+    texts = sample['labels']
     results = model.decode(mels, options)
     hypotheses.extend([result.text for result in results])
     references.extend(texts)
