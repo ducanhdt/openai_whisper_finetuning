@@ -13,4 +13,5 @@ class Config:
     train_name = "whisper"
     train_id = "librispeech01"
     model_name = "base"
-    lang = "en"
+    lang = "vi"
+    checkpoint_path = ""  # using origin model if this parh is invaild

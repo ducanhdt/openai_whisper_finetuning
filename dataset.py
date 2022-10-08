@@ -8,6 +8,7 @@ import torchaudio
 import whisper
 import torchaudio.transforms as at
 
+
 class LibriSpeech(torch.utils.data.Dataset):
     """
     A simple class to wrap LibriSpeech and
@@ -48,7 +49,9 @@ class LibriSpeechTraining(torch.utils.data.Dataset):
         # self.dataset = [self.dataset[i] for i in range(100)]
         self.sample_rate = sample_rate
         self.options = whisper.DecodingOptions(language="en", without_timestamps=True)
-        self.tokenizer = whisper.tokenizer.get_tokenizer(True, language="en", task=self.options.task)
+        self.tokenizer = whisper.tokenizer.get_tokenizer(
+            True, language="en", task=self.options.task
+        )
 
     def load_wave(wave_path, sample_rate: int = 16000) -> torch.Tensor:
         waveform, sr = torchaudio.load(wave_path, normalize=True)
@@ -70,17 +73,22 @@ class LibriSpeechTraining(torch.utils.data.Dataset):
         ] + self.tokenizer.encode(text)
         labels = text_token[1:] + [self.tokenizer.eot]
 
-        return {"input_ids": mel, "labels": labels, "dec_input_ids": text_token,"text":text}
+        return {
+            "input_ids": mel,
+            "labels": labels,
+            "dec_input_ids": text_token,
+            "text": text,
+        }
 
 
 class WhisperDataCollatorWhithPadding:
     def __call__(sefl, features):
-        input_ids, labels, dec_input_ids,texts = [], [], [], []
+        input_ids, labels, dec_input_ids, texts = [], [], [], []
         for f in features:
             input_ids.append(f["input_ids"])
             labels.append(f["labels"])
             dec_input_ids.append(f["dec_input_ids"])
-            texts.append(f['text'])
+            texts.append(f["text"])
         input_ids = torch.concat([input_id[None, :] for input_id in input_ids])
 
         label_lengths = [len(lab) for lab in labels]
@@ -102,32 +110,34 @@ class WhisperDataCollatorWhithPadding:
             k: torch.tensor(np.array(v), requires_grad=False) for k, v in batch.items()
         }
         batch["input_ids"] = input_ids
-        batch['texts'] = texts
+        batch["texts"] = texts
         return batch
+
 
 class VivosTraining(torch.utils.data.Dataset):
     def __init__(self, split="test", tokenizer=None, sample_rate=16000) -> None:
         super().__init__()
 
-
         root = f"data/vivos/{split}/waves"
         dataset = []
-        with open(f"data/vivos/{split}/prompts.txt",'r') as f:
+        with open(f"data/vivos/{split}/prompts.txt", "r") as f:
             a = f.read().split("\n")
         for i in a:
             x = i.find(" ")
-            audio_id,text = i[:x],i[x+1:]
-            speaker = audio_id.split('_')[0]
+            audio_id, text = i[:x], i[x + 1 :]
+            speaker = audio_id.split("_")[0]
             audio_path = f"{root}/{speaker}/{audio_id}.wav"
             # print(audio_path)
             if os.path.isfile(audio_path):
-                dataset.append((audio_id,audio_path,text))
-                
+                dataset.append((audio_id, audio_path, text))
+
         self.dataset = dataset
         # self.dataset = [self.dataset[i] for i in range(100)]
         self.sample_rate = sample_rate
         self.options = whisper.DecodingOptions(language="vi", without_timestamps=True)
-        self.tokenizer = whisper.tokenizer.get_tokenizer(True, language="vi", task=self.options.task)
+        self.tokenizer = whisper.tokenizer.get_tokenizer(
+            True, language="vi", task=self.options.task
+        )
 
     def load_wave(self, wave_path, sample_rate: int = 16000) -> torch.Tensor:
         waveform, sr = torchaudio.load(wave_path, normalize=True)
@@ -141,7 +151,7 @@ class VivosTraining(torch.utils.data.Dataset):
     def __getitem__(self, id):
         audio_id, audio_path, text = self.dataset[id]
 
-        audio = self.load_wave(audio_path,sample_rate=self.sample_rate)
+        audio = self.load_wave(audio_path, sample_rate=self.sample_rate)
         audio = whisper.pad_or_trim(audio.flatten())
         mel = whisper.log_mel_spectrogram(audio)
 
@@ -150,7 +160,12 @@ class VivosTraining(torch.utils.data.Dataset):
         ] + self.tokenizer.encode(text)
         labels = text_token[1:] + [self.tokenizer.eot]
 
-        return {"input_ids": mel, "labels": labels, "dec_input_ids": text_token,"text":text}
+        return {
+            "input_ids": mel,
+            "labels": labels,
+            "dec_input_ids": text_token,
+            "text": text,
+        }
 
 
 if __name__ == "__main__":

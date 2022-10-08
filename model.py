@@ -18,7 +18,9 @@ class WhisperModelModule(LightningModule):
         eval_dataloader=None,
     ) -> None:
         super().__init__()
-        self.options = whisper.DecodingOptions(language=cfg.lang, without_timestamps=True)
+        self.options = whisper.DecodingOptions(
+            language=cfg.lang, without_timestamps=True
+        )
         self.model = whisper.load_model(cfg.model_name)
         self.tokenizer = whisper.tokenizer.get_tokenizer(
             True, language=cfg.lang, task=self.options.task

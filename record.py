@@ -14,7 +14,7 @@ try:
 
     p = pyaudio.PyAudio()  # Create an interface to PortAudio
     s = input(("Enter to start recording"))
-    print("Recording")
+    print("Recording Ctrl+C to stop and save audio file")
 
     stream = p.open(
         format=sample_format,
