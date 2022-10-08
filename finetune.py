@@ -20,7 +20,7 @@ config = Config()
 
 if config.lang == "en":
     train_dataset = LibriSpeechTraining("train-clean-100")
-    valid_dataset = LibriSpeechTraining("test-clean")
+    valid_dataset = LibriSpeechTraining("dev-clean")
 elif config.lang == "vi":
     train_dataset = VivosTraining("train")
     valid_dataset = VivosTraining("test")
