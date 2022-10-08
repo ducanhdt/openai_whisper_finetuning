@@ -33,8 +33,8 @@ To inference:
 You are able to record your own audio file and convert it from speech to text using "record.py" and "inference.py"
 
 ### Todo lish
- 
 - [ ] Add python argument parser and refactor code
 - [ ] Add dockerfile for deploy
+- [ ] Add Vietnamese Text normalization / Postprocessing
 - [ ] Add streamlit interface to record and inference
 
