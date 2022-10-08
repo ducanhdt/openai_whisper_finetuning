@@ -65,22 +65,22 @@ class LibriSpeechTraining(torch.utils.data.Dataset):
         audio = whisper.pad_or_trim(audio.flatten())
         mel = whisper.log_mel_spectrogram(audio)
 
-        text = [
+        text_token = [
             *self.tokenizer.sot_sequence_including_notimestamps
         ] + self.tokenizer.encode(text)
-        labels = text[1:] + [self.tokenizer.eot]
+        labels = text_token[1:] + [self.tokenizer.eot]
 
-        return {"input_ids": mel, "labels": labels, "dec_input_ids": text}
+        return {"input_ids": mel, "labels": labels, "dec_input_ids": text_token,"text":text}
 
 
 class WhisperDataCollatorWhithPadding:
     def __call__(sefl, features):
-        input_ids, labels, dec_input_ids = [], [], []
+        input_ids, labels, dec_input_ids,texts = [], [], [], []
         for f in features:
             input_ids.append(f["input_ids"])
             labels.append(f["labels"])
             dec_input_ids.append(f["dec_input_ids"])
-
+            texts.append(f['text'])
         input_ids = torch.concat([input_id[None, :] for input_id in input_ids])
 
         label_lengths = [len(lab) for lab in labels]
@@ -102,7 +102,7 @@ class WhisperDataCollatorWhithPadding:
             k: torch.tensor(np.array(v), requires_grad=False) for k, v in batch.items()
         }
         batch["input_ids"] = input_ids
-
+        batch['texts'] = texts
         return batch
 
 class VivosTraining(torch.utils.data.Dataset):
@@ -145,12 +145,12 @@ class VivosTraining(torch.utils.data.Dataset):
         audio = whisper.pad_or_trim(audio.flatten())
         mel = whisper.log_mel_spectrogram(audio)
 
-        text = [
+        text_token = [
             *self.tokenizer.sot_sequence_including_notimestamps
         ] + self.tokenizer.encode(text)
-        labels = text[1:] + [self.tokenizer.eot]
+        labels = text_token[1:] + [self.tokenizer.eot]
 
-        return {"input_ids": mel, "labels": labels, "dec_input_ids": text}
+        return {"input_ids": mel, "labels": labels, "dec_input_ids": text_token,"text":text}
 
 
 if __name__ == "__main__":

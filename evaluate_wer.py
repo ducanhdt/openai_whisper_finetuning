@@ -32,6 +32,7 @@ except Exception as e:
     print(e)
     print(f"load checkpoint failt using origin weigth of {config.model_name} model")
 model = module.model
+model.to(device)
 normalizer = EnglishTextNormalizer()
 
 print(
@@ -47,16 +48,15 @@ elif config.lang == "en":
     options = whisper.DecodingOptions(language="en", without_timestamps=True, fp16=torch.cuda.is_available())
 
 loader = torch.utils.data.DataLoader(
-    dataset, batch_size=1, collate_fn=WhisperDataCollatorWhithPadding()
+    dataset, batch_size=8, num_workers=config.num_worker,collate_fn=WhisperDataCollatorWhithPadding()
 )
 
 hypotheses = []
 references = []
-
+print(model.device)
 for sample in tqdm(loader):
     mels = sample['input_ids'].to(model.device)
-    texts = sample['labels']
-    print("xxx",mels.device,model.device)
+    texts = sample['texts']
     results = model.decode(mels, options)
     hypotheses.extend([result.text for result in results])
     references.extend(texts)
@@ -65,7 +65,9 @@ data = pd.DataFrame(dict(hypothesis=hypotheses, reference=references))
 
 data["hypothesis_clean"] = [normalizer(text) for text in data["hypothesis"]]
 data["reference_clean"] = [normalizer(text) for text in data["reference"]]
-
+print(data["hypothesis_clean"][:10])
+print("___________")
+print(data["reference_clean"][:10])
 wer = jiwer.wer(list(data["reference_clean"]), list(data["hypothesis_clean"]))
 
 print(f"WER: {wer * 100:.2f} %")

@@ -16,42 +16,42 @@ from model import WhisperModelModule
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-cfg = Config()
+config = Config()
 
-if cfg.lang == "en":
-    train_dataset = LibriSpeechTraining("test-clean")
+if config.lang == "en":
+    train_dataset = LibriSpeechTraining("train-clean-100")
     valid_dataset = LibriSpeechTraining("test-clean")
-elif cfg.lang == "vi":
+elif config.lang == "vi":
     train_dataset = VivosTraining("train")
     valid_dataset = VivosTraining("test")
 
 train_loader = torch.utils.data.DataLoader(
-    train_dataset, batch_size=cfg.batch_size, collate_fn=WhisperDataCollatorWhithPadding()
+    train_dataset, batch_size=config.batch_size,num_workers=config.num_worker, collate_fn=WhisperDataCollatorWhithPadding()
 )
 valid_loader = torch.utils.data.DataLoader(
-    valid_dataset, batch_size=cfg.batch_size, collate_fn=WhisperDataCollatorWhithPadding()
+    valid_dataset, batch_size=config.batch_size,num_workers=config.num_worker, collate_fn=WhisperDataCollatorWhithPadding()
 )
 
 
-Path(cfg.log_output_dir).mkdir(exist_ok=True)
-Path(cfg.check_output_dir).mkdir(exist_ok=True)
+Path(config.log_output_dir).mkdir(exist_ok=True)
+Path(config.check_output_dir).mkdir(exist_ok=True)
 
-tflogger = TensorBoardLogger(save_dir=cfg.log_output_dir, name=cfg.train_name, version=cfg.train_id)
+tflogger = TensorBoardLogger(save_dir=config.log_output_dir, name=config.train_name, version=config.train_id)
 
 checkpoint_callback = ModelCheckpoint(
-    dirpath=f"{cfg.check_output_dir}/checkpoint",
+    dirpath=f"{config.check_output_dir}/checkpoint",
     filename="checkpoint-{epoch:04d}",
     save_top_k=-1,  # all model save
 )
 
 callback_list = [checkpoint_callback, LearningRateMonitor(logging_interval="epoch")]
-model = WhisperModelModule(cfg,train_loader,valid_loader)
+model = WhisperModelModule(config,train_loader,valid_loader)
 
 trainer = Trainer(
     # precision=2,
     accelerator=DEVICE,
-    max_epochs=cfg.num_train_epochs,
-    accumulate_grad_batches=cfg.gradient_accumulation_steps,
+    max_epochs=config.num_train_epochs,
+    accumulate_grad_batches=config.gradient_accumulation_steps,
     logger=tflogger,
     callbacks=callback_list,
 )

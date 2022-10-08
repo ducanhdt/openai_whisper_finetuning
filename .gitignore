@@ -1,4 +1,5 @@
-/content
-/data
+/content/*
+/data/*
 __pycache__/
 venv/
+.vscode
