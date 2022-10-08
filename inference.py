@@ -1,7 +1,7 @@
 import numpy as np
 import whisper
 from whisper.normalizers import EnglishTextNormalizer
-
+import torch
 
 model = whisper.load_model("tiny")
 normalizer = EnglishTextNormalizer()
@@ -24,7 +24,7 @@ _, probs = model.detect_language(mel)
 print(f"Detected language: {max(probs, key=probs.get)}")
 
 # decode the audio
-options = whisper.DecodingOptions(language="en", without_timestamps=True, fp16=False)
+options = whisper.DecodingOptions(language="en", without_timestamps=True, fp16=torch.cuda.is_available())
 result = whisper.decode(model, mel, options)
 # print(options)
 # print the recognized text

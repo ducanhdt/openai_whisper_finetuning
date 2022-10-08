@@ -1,8 +1,10 @@
 from pathlib import Path
-import numpy as np
 import torch
-import whisper
 from config import Config
+try:
+    import tensorflow  # required in Colab to avoid protobuf compatibility issues
+except ImportError:
+    pass
 
 from dataset import LibriSpeechTraining, VivosTraining, WhisperDataCollatorWhithPadding
 

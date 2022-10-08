@@ -3,19 +3,22 @@ import numpy as np
 import pandas as pd
 import torch
 import whisper
+try:
+    import tensorflow  # required in Colab to avoid protobuf compatibility issues
+except ImportError:
+    pass
+
 from tqdm import tqdm
 from whisper.normalizers import EnglishTextNormalizer
 from config import Config
 from model import WhisperModelModule
 
-from dataset import LibriSpeechTraining, WhisperDataCollatorWhithPadding
+from dataset import VivosTraining, LibriSpeechTraining, WhisperDataCollatorWhithPadding
 
-dataset = LibriSpeechTraining("test-clean")
-loader = torch.utils.data.DataLoader(
-    dataset, batch_size=1, collate_fn=WhisperDataCollatorWhithPadding()
-)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 config = Config()
+
 checkpoint_path = "/home/ducanh/Desktop/WHISPER/content/artifacts/checkpoint/checkpoint-epoch=0002.ckpt"
 
 # try:
@@ -29,7 +32,6 @@ except Exception as e:
     print(e)
     print(f"load checkpoint failt using origin weigth of {config.model_name} model")
 model = module.model
-    
 normalizer = EnglishTextNormalizer()
 
 print(
@@ -37,17 +39,24 @@ print(
     f"and has {sum(np.prod(p.shape) for p in model.parameters()):,} parameters."
 )
 
+if config.lang == "vi":
+    dataset = VivosTraining("test")
+    options = whisper.DecodingOptions(language="vi", without_timestamps=True, fp16=torch.cuda.is_available())
+elif config.lang == "en":
+    dataset = LibriSpeechTraining('test-clean')
+    options = whisper.DecodingOptions(language="en", without_timestamps=True, fp16=torch.cuda.is_available())
 
-options = whisper.DecodingOptions(language="en", without_timestamps=True, fp16=False)
-# options = whisper.DecodingOptions(language="en", without_timestamps=True)
-# options = whisper.DecodingOptions(language="vi", without_timestamps=True)
+loader = torch.utils.data.DataLoader(
+    dataset, batch_size=1, collate_fn=WhisperDataCollatorWhithPadding()
+)
 
 hypotheses = []
 references = []
 
 for sample in tqdm(loader):
-    mels = sample['input_ids']
+    mels = sample['input_ids'].to(model.device)
     texts = sample['labels']
+    print("xxx",mels.device,model.device)
     results = model.decode(mels, options)
     hypotheses.extend([result.text for result in results])
     references.extend(texts)
