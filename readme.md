@@ -2,17 +2,17 @@
 [[Original Repo]](https://github.com/openai/whisper) 
 [[Example Colab]](https://colab.research.google.com/drive/1aXj6ssi_y3qow-h6M8M1Q5tFgHE0n3UP?usp=sharing)
 
+In this setup we use a small part of the LibriSpeech Dataset for finetuning the English model, the other option is using the Vivos dataset for finetuning the Vietnamese model. In case you want to finetune in either another dataset or another language, check the "dataset.py". You are also able to change the hyperparameters by modifying "config.py"
 
-In this setup we using a small part of LibriSpeech Dataset for finetuning the English model, other option is using Vivos dataset for finetuning Vietnamese model. In case you want to finetune in either other dataset or other language, check the "dataset.py". You also able to change the hyperparameters by modify "config.py"
+Experiment on Vietnamese with Vivos Dataset, WER of the base Whisper model dropped from 45.56% to 24.27% after finetuning 5 epochs.
 
-Experiment on Vietnamese with Vivos Dataset, WER of the base Whisper model dropped from 45.56% to 24.27% after finetuning 5 epochs.  
+Python version: 3.7
 
-python version: 3.7
-setup:
+Setup:
 ```bash
 pip install -r requirements.txt
 ```
-In case you wan to finetune model in Vietnamese, run this command to download the dataset:
+In case you want to finetune model in Vietnamese, run this command to download the dataset:
 ```bash
 python download_data_vivos.py
 tar -xvf vivos.tar.gz vivos
