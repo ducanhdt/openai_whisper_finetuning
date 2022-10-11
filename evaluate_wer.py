@@ -1,8 +1,11 @@
+import os
 import jiwer
 import numpy as np
 import pandas as pd
 import torch
 import whisper
+
+from ultis import load_config_file
 
 try:
     import tensorflow  # required in Colab to avoid protobuf compatibility issues
@@ -16,11 +19,13 @@ from model import WhisperModelModule
 
 from dataset import VivosTraining, LibriSpeechTraining, WhisperDataCollatorWhithPadding
 
+from dotenv import load_dotenv
+load_dotenv()
+config = load_config_file(os.environ["CONFIG_PATH"])
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-config = Config()
-
-checkpoint_path = config.checkpoint_path
+checkpoint_path = config["checkpoint_path"]
 
 # try:
 module = WhisperModelModule(config)
@@ -31,7 +36,7 @@ try:
     print(f"load checkpoint successfully from {checkpoint_path}")
 except Exception as e:
     print(e)
-    print(f"load checkpoint failt using origin weigth of {config.model_name} model")
+    print(f"load checkpoint failt using origin weigth of {config['model_name']} model")
 model = module.model
 model.to(device)
 normalizer = EnglishTextNormalizer()
@@ -41,12 +46,12 @@ print(
     f"and has {sum(np.prod(p.shape) for p in model.parameters()):,} parameters."
 )
 
-if config.lang == "vi":
+if config["lang"] == "vi":
     dataset = VivosTraining("test")
     options = whisper.DecodingOptions(
         language="vi", without_timestamps=True, fp16=torch.cuda.is_available()
     )
-elif config.lang == "en":
+elif config["lang"] == "en":
     dataset = LibriSpeechTraining("test-clean")
     options = whisper.DecodingOptions(
         language="en", without_timestamps=True, fp16=torch.cuda.is_available()
@@ -55,7 +60,7 @@ elif config.lang == "en":
 loader = torch.utils.data.DataLoader(
     dataset,
     batch_size=8,
-    num_workers=config.num_worker,
+    num_workers=config["num_worker"],
     collate_fn=WhisperDataCollatorWhithPadding(),
 )
 
@@ -72,11 +77,11 @@ for sample in tqdm(loader):
 data = pd.DataFrame(dict(hypothesis=hypotheses, reference=references))
 
 data["hypothesis_clean"] = [
-    normalizer(text) if config.lang == "en" else text.lower()
+    normalizer(text) if config["lang"] == "en" else text.lower()
     for text in data["hypothesis"]
 ]
 data["reference_clean"] = [
-    normalizer(text) if config.lang == "en" else text.lower()
+    normalizer(text) if config["lang"] == "en" else text.lower()
     for text in data["reference"]
 ]
 print(data["hypothesis_clean"][:10])

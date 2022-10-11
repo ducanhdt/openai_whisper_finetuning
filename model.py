@@ -4,7 +4,6 @@ import whisper
 
 from pytorch_lightning import LightningModule
 
-from config import Config
 import evaluate
 
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -13,17 +12,17 @@ from transformers import AdamW, get_linear_schedule_with_warmup
 class WhisperModelModule(LightningModule):
     def __init__(
         self,
-        cfg: Config,
-        train_dataloader=None,
-        eval_dataloader=None,
+        config,
+        train_dataloader,
+        eval_dataloader,
     ) -> None:
         super().__init__()
         self.options = whisper.DecodingOptions(
-            language=cfg.lang, without_timestamps=True
+            language=config["lang"], without_timestamps=True
         )
-        self.model = whisper.load_model(cfg.model_name)
+        self.model = whisper.load_model(config["model_name"])
         self.tokenizer = whisper.tokenizer.get_tokenizer(
-            True, language=cfg.lang, task=self.options.task
+            True, language=config["lang"], task=self.options.task
         )
 
         # only decoder training
@@ -34,7 +33,7 @@ class WhisperModelModule(LightningModule):
         self.metrics_wer = evaluate.load("wer")
         self.metrics_cer = evaluate.load("cer")
 
-        self.cfg = cfg
+        self.config = config
         self.trainloader = train_dataloader
         self.evaloader = eval_dataloader
 
@@ -92,7 +91,7 @@ class WhisperModelModule(LightningModule):
                     for n, p in model.named_parameters()
                     if not any(nd in n for nd in no_decay)
                 ],
-                "weight_decay": self.cfg.weight_decay,
+                "weight_decay": self.config["weight_decay"],
             },
             {
                 "params": [
@@ -105,14 +104,14 @@ class WhisperModelModule(LightningModule):
         ]
         optimizer = AdamW(
             optimizer_grouped_parameters,
-            lr=self.cfg.learning_rate,
-            eps=self.cfg.adam_epsilon,
+            lr=self.config["learning_rate"],
+            eps=self.config["adam_epsilon"],
         )
         self.optimizer = optimizer
 
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=self.cfg.warmup_steps,
+            num_warmup_steps=self.config["warmup_steps"],
             num_training_steps=self.t_total,
         )
         self.scheduler = scheduler
@@ -126,9 +125,9 @@ class WhisperModelModule(LightningModule):
 
         if stage == "fit" or stage is None:
             self.t_total = (
-                (len(self.trainloader.dataset) // (self.cfg.batch_size))
-                // self.cfg.gradient_accumulation_steps
-                * float(self.cfg.num_train_epochs)
+                (len(self.trainloader.dataset) // (self.config["batch_size"]))
+                // self.config["gradient_accumulation_steps"]
+                * float(self.config["num_train_epochs"])
             )
 
     def train_dataloader(self):

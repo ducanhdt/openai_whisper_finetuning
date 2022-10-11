@@ -2,12 +2,15 @@ import numpy as np
 import whisper
 import torch
 
-from config import Config
 from model import WhisperModelModule
+from ultis import load_config_file
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-config = Config()
+from dotenv import load_dotenv
+load_dotenv()
+config = load_config_file(os.environ["CONFIG_PATH"])
+
 
 checkpoint_path = config.checkpoint_path
 
