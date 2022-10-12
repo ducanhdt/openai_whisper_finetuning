@@ -17,6 +17,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from model import WhisperModelModule
 
 from dotenv import load_dotenv
+
 load_dotenv()
 config = load_config_file(os.environ["CONFIG_PATH"])
 print(config)
@@ -49,7 +50,9 @@ Path(config["log_output_dir"]).mkdir(exist_ok=True)
 Path(config["check_output_dir"]).mkdir(exist_ok=True)
 
 tflogger = TensorBoardLogger(
-    save_dir=config["log_output_dir"], name=config["train_name"], version=config["train_id"]
+    save_dir=config["log_output_dir"],
+    name=config["train_name"],
+    version=config["train_id"],
 )
 
 checkpoint_callback = ModelCheckpoint(

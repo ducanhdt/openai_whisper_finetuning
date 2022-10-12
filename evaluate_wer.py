@@ -20,6 +20,7 @@ from model import WhisperModelModule
 from dataset import VivosTraining, LibriSpeechTraining, WhisperDataCollatorWhithPadding
 
 from dotenv import load_dotenv
+
 load_dotenv()
 config = load_config_file(os.environ["CONFIG_PATH"])
 

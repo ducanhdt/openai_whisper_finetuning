@@ -13,8 +13,8 @@ class WhisperModelModule(LightningModule):
     def __init__(
         self,
         config,
-        train_dataloader,
-        eval_dataloader,
+        train_dataloader=None,
+        eval_dataloader=None,
     ) -> None:
         super().__init__()
         self.options = whisper.DecodingOptions(

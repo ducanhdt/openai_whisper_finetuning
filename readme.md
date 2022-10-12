@@ -6,7 +6,7 @@ In this setup we use a small part of the LibriSpeech Dataset for finetuning the 
 
 Experiment on Vietnamese with Vivos Dataset, WER of the base Whisper model dropped from 45.56% to 24.27% after finetuning 5 epochs.
 
-Python version: 3.7
+Python version: 3.8
 
 Setup:
 ```bash
@@ -20,6 +20,11 @@ python data/download_data_vivos.py
 tar -xvf vivos.tar.gz vivos
 mv vivos data
 ```
+Run demo page by running, it will take a while to download the model:
+```bash
+streamlit run interface.py
+```
+![alt text](image/demo_page.png)
 
 To Finetune:
 ```bash
@@ -38,5 +43,5 @@ You are able to record your own audio file and convert it from speech to text us
 - [x] Add python argument parser and refactor code
 - [ ] Add dockerfile for deploy
 - [ ] Add Vietnamese Text normalization / Postprocessing
-- [ ] Add streamlit interface to record and inference
+- [x] Add streamlit interface to record and inference
 

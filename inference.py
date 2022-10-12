@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import whisper
 import torch
@@ -8,11 +9,12 @@ from ultis import load_config_file
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 from dotenv import load_dotenv
+
 load_dotenv()
 config = load_config_file(os.environ["CONFIG_PATH"])
 
 
-checkpoint_path = config.checkpoint_path
+checkpoint_path = config["checkpoint_path"]
 
 # try:
 module = WhisperModelModule(config)
@@ -23,7 +25,7 @@ try:
     print(f"load checkpoint successfully from {checkpoint_path}")
 except Exception as e:
     print(e)
-    print(f"load checkpoint failt using origin weigth of {config.model_name} model")
+    print(f"load checkpoint failt using origin weigth of {config['model_name']} model")
 model = module.model
 model.to(device)
 
