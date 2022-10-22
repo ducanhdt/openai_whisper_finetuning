@@ -26,10 +26,12 @@ streamlit run interface.py
 ```
 ![alt text](image/demo_page.png)
 
-To Finetune:
+To Finetune (with only speech-to-text-task):
 ```bash
 python finetune.py
 ```
+In case you want to finetune Whisper for both tasks STT and translate (ex: using google api to translate Vietnamese text to English), you can see the example dataset at [link](https://github.com/ducanhdt/openai_whisper_finetuning/blob/5409f55d2bdae3657c0973ddefaf61f27f150be1/dataset.py#L170)
+
 To evaluate the model:
 ```bash
 python evaluate_wer.py
