@@ -8,7 +8,7 @@ try:
 except ImportError:
     pass
 
-from dataset import LibriSpeechTraining, VivosTraining, WhisperDataCollatorWhithPadding
+from dataset import LibriSpeechTraining, VivosTraining, VivosTrainingBothTask, WhisperDataCollatorWhithPadding,ZaloAiWithTimestampTraining  
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
@@ -29,8 +29,8 @@ if config["lang"] == "en":
     train_dataset = LibriSpeechTraining("train-clean-100")
     valid_dataset = LibriSpeechTraining("dev-clean")
 elif config["lang"] == "vi":
-    train_dataset = VivosTraining("train")
-    valid_dataset = VivosTraining("test")
+    train_dataset = ZaloAiWithTimestampTraining("train")
+    valid_dataset = ZaloAiWithTimestampTraining("test")
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,

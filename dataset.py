@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 
@@ -235,6 +236,81 @@ class VivosTrainingBothTask(torch.utils.data.Dataset):
             "text": text,
         }
 
+class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
+    def __init__(self, split = "train",tokenizer=None, sample_rate=16000) -> None:
+        super().__init__()
+
+        root = f"../train"
+        self.song_path = f"{root}/songs"
+        self.label_path = f"{root}/labels"
+        
+        song_paths_list = {i.replace(".wav","") for i in os.listdir(self.song_path) if ".wav" in i}
+        id_list = [i.replace(".json","") for i in os.listdir(self.label_path) if ".json" in i and i.replace(".json","") in song_paths_list]
+        self.dataset = []
+        for i in id_list:
+            self.dataset.append((i,"word"))
+            if split == "train":
+                self.dataset.append((i,"segment"))
+        # self.dataset = [self.dataset[i] for i in range(100)]
+        self.sample_rate = sample_rate
+        self.options = whisper.DecodingOptions(language="vi", without_timestamps=True)
+        self.tokenizer = whisper.tokenizer.get_tokenizer(
+            True, language="vi", task=self.options.task
+        )
+
+    def load_wave(self, wave_path, sample_rate: int = 16000) -> torch.Tensor:
+        waveform, sr = torchaudio.load(wave_path, normalize=True)
+        if sample_rate != sr:
+            waveform = at.Resample(sr, sample_rate)(waveform)
+        return waveform
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, id):
+        audio_id, token_type  = self.dataset[id]
+
+        audio = self.load_wave(f"{self.song_path}/{audio_id}.wav", sample_rate=self.sample_rate)
+        audio = whisper.pad_or_trim(audio.flatten())
+        mel = whisper.log_mel_spectrogram(audio)
+        
+        with open(f"{self.label_path}/{audio_id}.json",'r') as f:
+            target = json.load(f)
+        
+        text_token = [
+            *self.tokenizer.sot_sequence
+        ] 
+        if token_type == "segment":
+            for seg in target:
+               text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+               text_token += self.tokenizer.encode(" ".join([tok['d'] for tok in seg['l']]))
+               text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+        else:
+            for seg in target:
+                for tok in seg['l']:
+                    text_token.append(int(tok['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                    text_token += self.tokenizer.encode(tok['d'])
+                    text_token.append(int(tok['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+            if len(text_token)>448:
+                print("text word too long")
+                text_token = [
+                    *self.tokenizer.sot_sequence
+                ] 
+                if token_type == "segment":
+                    for seg in target:
+                        text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                        text_token += self.tokenizer.encode(" ".join([tok['d'] for tok in seg['l']]))
+                        text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                            
+        labels = text_token[1:] + [self.tokenizer.eot]
+        text = ' '.join([tok['d'] for seg in target for tok in seg['l']])
+        return {
+            "input_ids": mel,
+            "labels": labels,
+            "dec_input_ids": text_token,
+            "text": text,
+        }
+
 
 
 if __name__ == "__main__":
@@ -245,7 +321,7 @@ if __name__ == "__main__":
     # print(sample_text)
     model = whisper.load_model("tiny")
     wtokenizer = whisper.tokenizer.get_tokenizer(True, language="en")
-    dataset = LibriSpeechTraining("test-clean", wtokenizer)
+    dataset = ZaloAiWithTimestampTraining(wtokenizer)
     loader = torch.utils.data.DataLoader(
         dataset, batch_size=1, collate_fn=WhisperDataCollatorWhithPadding()
     )
@@ -256,11 +332,11 @@ if __name__ == "__main__":
 
         for token, dec in zip(b["labels"], b["dec_input_ids"]):
             token[token == -100] = wtokenizer.eot
-            text = wtokenizer.decode(token, skip_special_tokens=False)
+            text = wtokenizer.decode_with_timestamps(token)
             print(text)
 
             dec[dec == -100] = wtokenizer.eot
-            text = wtokenizer.decode(dec, skip_special_tokens=False)
+            text = wtokenizer.decode_with_timestamps(dec)
             print(text)
         break
     # with torch.no_grad():
