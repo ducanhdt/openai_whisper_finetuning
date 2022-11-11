@@ -237,10 +237,10 @@ class VivosTrainingBothTask(torch.utils.data.Dataset):
         }
 
 class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
-    def __init__(self, split = "train",root = "../train",predict="../public_test",tokenizer=None, sample_rate=16000) -> None:
+    def __init__(self, split = "train",root_path = "../train",test_path="../public_test",tokenizer=None, sample_rate=16000) -> None:
         super().__init__()
-        self.song_path = f"{root}/songs"
-        self.label_path = f"{root}/labels"
+        self.song_path = f"{root_path}/songs"
+        self.label_path = f"{root_path}/labels"
         self.sample_rate = sample_rate
         self.options = whisper.DecodingOptions(language="vi", without_timestamps=True)
         self.tokenizer = whisper.tokenizer.get_tokenizer(
@@ -250,43 +250,64 @@ class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
         song_paths_list = {i.replace(".wav","") for i in os.listdir(self.song_path) if ".wav" in i}
         id_list = [i.replace(".json","") for i in os.listdir(self.label_path) if ".json" in i and i.replace(".json","") in song_paths_list]
         too_long = 0
-        too_short = 0
-        for audio_id in id_list:
-            with open(f"{self.label_path}/{audio_id}.json",'r') as f:
-                target = json.load(f)
-            
-            text_token = [
-                *self.tokenizer.sot_sequence
-            ] 
-            for seg in target:
-                for tok in seg['l']:
-                    text_token.append(int(tok['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-                    text_token += self.tokenizer.encode(" "+tok['d'])
-                text_token.append(int(tok['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-            if len(text_token)>448:
-                too_long+=1
-            if len(text_token)==0:
-                print(audio_id)
-            text_token = [
-                *self.tokenizer.sot_sequence
-            ] 
-            
-            for seg in target:
-                text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-                text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']])+' ')
-                text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-            if len(text_token)>448:
-                too_long+=1
-            if len(text_token)==0:
-                print(audio_id)
-        print(too_long,"audio is longer than 448 token")
         self.dataset = []
-        for i in id_list:
-            self.dataset.append((i,"word"))
-            self.dataset.append((i,"no_timestamp"))
-            # if split == "train":
-            #     self.dataset.append((i,"segment"))
+        if split=="train":
+            for audio_id in id_list:
+                with open(f"{self.label_path}/{audio_id}.json",'r') as f:
+                    target = json.load(f)
+                text = ' '.join([tok['d'] for seg in target for tok in seg['l']])
+                #add segment token output
+                text_token = [
+                    *self.tokenizer.sot_sequence
+                ] 
+                for seg in target:
+                    for tok in seg['l']:
+                        text_token.append(int(tok['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                        text_token += self.tokenizer.encode(" "+tok['d'].lower())
+                    text_token.append(int(tok['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                if len(text_token)>448:
+                    too_long+=1
+                else:
+                    self.dataset.append((f"{self.song_path}/{audio_id}.wav",text_token,text))
+                
+                #add word segment token output
+                text_token = [
+                    *self.tokenizer.sot_sequence
+                ] 
+                
+                for seg in target:
+                    text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                    text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']]).lower()+' ')
+                    text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                if len(text_token)>448:
+                    too_long+=1
+                else:
+                    self.dataset.append((f"{self.song_path}/{audio_id}.wav",text_token,text))
+                text_token = [
+                        *self.tokenizer.sot_sequence_including_notimestamps
+                    ] + self.tokenizer.encode(' '.join([tok['d'] for seg in target for tok in seg['l']]))
+
+                if len(text_token)>448:
+                    too_long+=1
+                else:
+                    self.dataset.append((f"{self.song_path}/{audio_id}.wav",text_token,text))
         
+        for audio_id in os.listdir(f"{test_path}/songs"):
+            audio_id = audio_id.replace(".wav","")
+            if os.path.isfile(f"{test_path}/lyrics/{audio_id}.txt"):
+                with open(f"{test_path}/lyrics/{audio_id}.txt",'r') as f:
+                    text=f.read().strip().lower()
+                text_token = [
+                    *self.tokenizer.sot_sequence_including_notimestamps
+                ] + self.tokenizer.encode(' '.join(text))
+                
+                if len(text_token)>448:
+                    print("test too long",audio_id)
+                    too_long+=1
+                else:
+                    self.dataset.append((f"{test_path}/songs/{audio_id}.wav",text_token,text))
+                                    
+        print(too_long,"audio is longer than 448 token")
         # self.dataset = [self.dataset[i] for i in range(100)]
 
     def load_wave(self, wave_path, sample_rate: int = 16000) -> torch.Tensor:
@@ -299,47 +320,14 @@ class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
         return len(self.dataset)
 
     def __getitem__(self, id):
-        audio_id, token_type  = self.dataset[id]
+        audio_path, text_token, text  = self.dataset[id]
 
-        audio = self.load_wave(f"{self.song_path}/{audio_id}.wav", sample_rate=self.sample_rate)
+        audio = self.load_wave(audio_path, sample_rate=self.sample_rate)
         audio = whisper.pad_or_trim(audio.flatten())
         mel = whisper.log_mel_spectrogram(audio)
-        
-        with open(f"{self.label_path}/{audio_id}.json",'r') as f:
-            target = json.load(f)
-        
-        text_token = [
-            *self.tokenizer.sot_sequence
-        ] 
-        if token_type == "segment":
-            for seg in target:
-                text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-                text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']])+' ')
-                text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-        elif token_type == "word":
-            for seg in target:
-                for tok in seg['l']:
-                    text_token.append(int(tok['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-                    text_token += self.tokenizer.encode(" "+tok['d'])
-                text_token.append(int(tok['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-            if len(text_token)>448:
-                # print("text word too long")
-                text_token = [
-                    *self.tokenizer.sot_sequence
-                ] 
-                token_type == "segment"
-                for seg in target:
-                    text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-                    text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']])+' ')
-                    text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-        elif token_type == "no_timestamp":
-            text_token = [
-                *self.tokenizer.sot_sequence_including_notimestamps
-            ] + self.tokenizer.encode(' '.join([tok['d'] for seg in target for tok in seg['l']]))
-        
                             
         labels = text_token[1:] + [self.tokenizer.eot]
-        text = ' '.join([tok['d'] for seg in target for tok in seg['l']])
+        # text = ' '.join([tok['d'] for seg in target for tok in seg['l']])
         return {
             "input_ids": mel,
             "labels": labels,
