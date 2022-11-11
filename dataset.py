@@ -237,7 +237,7 @@ class VivosTrainingBothTask(torch.utils.data.Dataset):
         }
 
 class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
-    def __init__(self, split = "train",root = "../train",tokenizer=None, sample_rate=16000) -> None:
+    def __init__(self, split = "train",root = "../train",predict="../public_test",tokenizer=None, sample_rate=16000) -> None:
         super().__init__()
         self.song_path = f"{root}/songs"
         self.label_path = f"{root}/labels"
@@ -283,8 +283,10 @@ class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
         self.dataset = []
         for i in id_list:
             self.dataset.append((i,"word"))
-            if split == "train":
-                self.dataset.append((i,"segment"))
+            self.dataset.append((i,"no_timestamp"))
+            # if split == "train":
+            #     self.dataset.append((i,"segment"))
+        
         # self.dataset = [self.dataset[i] for i in range(100)]
 
     def load_wave(self, wave_path, sample_rate: int = 16000) -> torch.Tensor:
@@ -314,7 +316,7 @@ class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
                 text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
                 text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']])+' ')
                 text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-        else:
+        elif token_type == "word":
             for seg in target:
                 for tok in seg['l']:
                     text_token.append(int(tok['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
@@ -330,6 +332,11 @@ class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
                     text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
                     text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']])+' ')
                     text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+        elif token_type == "no_timestamp":
+            text_token = [
+                *self.tokenizer.sot_sequence_including_notimestamps
+            ] + self.tokenizer.encode(' '.join([tok['d'] for seg in target for tok in seg['l']]))
+        
                             
         labels = text_token[1:] + [self.tokenizer.eot]
         text = ' '.join([tok['d'] for seg in target for tok in seg['l']])
