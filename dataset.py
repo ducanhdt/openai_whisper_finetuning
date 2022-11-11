@@ -243,20 +243,51 @@ class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
         root = f"../train"
         self.song_path = f"{root}/songs"
         self.label_path = f"{root}/labels"
+        self.sample_rate = sample_rate
+        self.options = whisper.DecodingOptions(language="vi", without_timestamps=True)
+        self.tokenizer = whisper.tokenizer.get_tokenizer(
+            True, language="vi", task=self.options.task
+        )
         
         song_paths_list = {i.replace(".wav","") for i in os.listdir(self.song_path) if ".wav" in i}
         id_list = [i.replace(".json","") for i in os.listdir(self.label_path) if ".json" in i and i.replace(".json","") in song_paths_list]
+        too_long = 0
+        too_short = 0
+        for audio_id in id_list:
+            with open(f"{self.label_path}/{audio_id}.json",'r') as f:
+                target = json.load(f)
+            
+            text_token = [
+                *self.tokenizer.sot_sequence
+            ] 
+            for seg in target:
+                for tok in seg['l']:
+                    text_token.append(int(tok['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                    text_token += self.tokenizer.encode(" "+tok['d'])
+                text_token.append(int(tok['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+            if len(text_token)>448:
+                too_long+=1
+            if len(text_token)==0:
+                print(audio_id)
+            text_token = [
+                *self.tokenizer.sot_sequence
+            ] 
+            
+            for seg in target:
+                text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']])+' ')
+                text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+            if len(text_token)>448:
+                too_long+=1
+            if len(text_token)==0:
+                print(audio_id)
+        print(too_long,"audio is longer than 448 token")
         self.dataset = []
         for i in id_list:
             self.dataset.append((i,"word"))
             if split == "train":
                 self.dataset.append((i,"segment"))
         # self.dataset = [self.dataset[i] for i in range(100)]
-        self.sample_rate = sample_rate
-        self.options = whisper.DecodingOptions(language="vi", without_timestamps=True)
-        self.tokenizer = whisper.tokenizer.get_tokenizer(
-            True, language="vi", task=self.options.task
-        )
 
     def load_wave(self, wave_path, sample_rate: int = 16000) -> torch.Tensor:
         waveform, sr = torchaudio.load(wave_path, normalize=True)
@@ -282,25 +313,25 @@ class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
         ] 
         if token_type == "segment":
             for seg in target:
-               text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-               text_token += self.tokenizer.encode(" ".join([tok['d'] for tok in seg['l']]))
-               text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']])+' ')
+                text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
         else:
             for seg in target:
                 for tok in seg['l']:
                     text_token.append(int(tok['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-                    text_token += self.tokenizer.encode(tok['d'])
-                    text_token.append(int(tok['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                    text_token += self.tokenizer.encode(" "+tok['d'])
+                text_token.append(int(tok['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
             if len(text_token)>448:
-                print("text word too long")
+                # print("text word too long")
                 text_token = [
                     *self.tokenizer.sot_sequence
                 ] 
-                if token_type == "segment":
-                    for seg in target:
-                        text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
-                        text_token += self.tokenizer.encode(" ".join([tok['d'] for tok in seg['l']]))
-                        text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                token_type == "segment"
+                for seg in target:
+                    text_token.append(int(seg['s']/1000.0/0.02)+self.tokenizer.timestamp_begin)
+                    text_token += self.tokenizer.encode(" "+ " ".join([tok['d'] for tok in seg['l']])+' ')
+                    text_token.append(int(seg['e']/1000.0/0.02)+self.tokenizer.timestamp_begin)
                             
         labels = text_token[1:] + [self.tokenizer.eot]
         text = ' '.join([tok['d'] for seg in target for tok in seg['l']])
@@ -323,7 +354,7 @@ if __name__ == "__main__":
     wtokenizer = whisper.tokenizer.get_tokenizer(True, language="en")
     dataset = ZaloAiWithTimestampTraining(wtokenizer)
     loader = torch.utils.data.DataLoader(
-        dataset, batch_size=1, collate_fn=WhisperDataCollatorWhithPadding()
+        dataset, batch_size=3, collate_fn=WhisperDataCollatorWhithPadding()
     )
     for b in loader:
         print(b["labels"].shape)
@@ -335,9 +366,9 @@ if __name__ == "__main__":
             text = wtokenizer.decode_with_timestamps(token)
             print(text)
 
-            dec[dec == -100] = wtokenizer.eot
-            text = wtokenizer.decode_with_timestamps(dec)
-            print(text)
+            # dec[dec == -100] = wtokenizer.eot
+            # text = wtokenizer.decode_with_timestamps(dec)
+            # print(text)
         break
     # with torch.no_grad():
     #     audio_features = model.encoder(b["input_ids"])
