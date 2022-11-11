@@ -237,10 +237,8 @@ class VivosTrainingBothTask(torch.utils.data.Dataset):
         }
 
 class ZaloAiWithTimestampTraining(torch.utils.data.Dataset):
-    def __init__(self, split = "train",tokenizer=None, sample_rate=16000) -> None:
+    def __init__(self, split = "train",root = "../train",tokenizer=None, sample_rate=16000) -> None:
         super().__init__()
-
-        root = f"../train"
         self.song_path = f"{root}/songs"
         self.label_path = f"{root}/labels"
         self.sample_rate = sample_rate
