@@ -1,4 +1,4 @@
-evaluate==0.2.2
+evaluate==0.3.0
 flake8==5.0.4
 isort==5.10.1
 jiwer==2.5.1
